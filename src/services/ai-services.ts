@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
 
 interface AIResponse {
   content: string;
@@ -147,9 +148,73 @@ Format the summary as a brief, professional update suitable for a team standup m
   }
 }
 
+export class ClaudeService {
+  private apiKey: string;
+  private model: string;
+  private client: ReturnType<typeof createAnthropic>;
+
+  constructor(config: AIServiceConfig) {
+    if (!config.apiKey) {
+      throw new Error("API key is required for ClaudeService.");
+    }
+    this.apiKey = config.apiKey;
+    this.model = config.model || "claude-3-5-sonnet-latest";
+    this.client = createAnthropic({ apiKey: this.apiKey });
+  }
+
+  async generateResponse(
+    prompt: string,
+    systemPrompt?: string
+  ): Promise<AIResponse> {
+    const mergedPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+
+    try {
+      const result = await generateText({
+        model: this.client(this.model),
+        prompt: mergedPrompt,
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+      });
+
+      return {
+        content: result.text,
+        usage: {
+          promptTokens: result.usage?.inputTokens ?? 0,
+          completionTokens: result.usage?.outputTokens ?? 0,
+          totalTokens:
+            result.usage?.totalTokens ??
+            (result.usage?.inputTokens ?? 0) +
+              (result.usage?.outputTokens ?? 0),
+        },
+      };
+    } catch (error) {
+      console.error("Claude Service Error:", error);
+      throw new Error(
+        `Failed to generate response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async summarizeCommits(commits: string[]): Promise<string> {
+    const prompt = `Please summarize the following git commits into a concise daily standup update:
+
+${commits.join("\n")}
+
+Format the summary as a brief, professional update suitable for a team standup meeting.`;
+
+    const systemPrompt =
+      "You are an expert at summarizing software development progress for daily standup meetings. Create concise, clear summaries that highlight key accomplishments and changes.";
+
+    const response = await this.generateResponse(prompt, systemPrompt);
+    return response.content;
+  }
+}
+
 // Factory function to create AI service based on provider
 export function createAIService(
-  provider: "openai" | "gemini",
+  provider: "openai" | "gemini" | "claude",
   config: AIServiceConfig
 ) {
   switch (provider) {
@@ -157,6 +222,8 @@ export function createAIService(
       return new OpenAIService(config);
     case "gemini":
       return new GeminiService(config);
+    case "claude":
+      return new ClaudeService(config);
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);
   }
