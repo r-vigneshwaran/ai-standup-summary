@@ -54,6 +54,45 @@ This extension contributes the following settings:
 
 Install "Daily Standup Bot" from the VS Code Extension Marketplace.
 
+## Local Development
+
+### Prerequisites
+- VS Code 1.101.0+
+- Node.js 18+ and npm
+
+### Install dependencies
+```bash
+npm install
+```
+
+### Start in development (watch mode)
+```bash
+npm run watch
+```
+
+### Run the extension (Extension Development Host)
+- Press F5 in VS Code, or use Run and Debug → “Run Extension”.
+
+Alternatively, via CLI:
+```bash
+code --extensionDevelopmentPath="PATH/TO/daily-standup-bot"
+```
+
+### Lint
+```bash
+npm run lint
+```
+
+### Test
+```bash
+npm test
+```
+
+### Build (production bundle)
+```bash
+npm run build
+```
+
 ### 2. Configure AI Provider
 
 Choose your preferred AI service:
